@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  mgp-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - mgp-data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - mgp-network
+
+volumes:
+  mgp-data:
+
+networks:
+  mgp-network:
+    driver: bridge
