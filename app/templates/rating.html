@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Rate Song - Eurovision Voting 2026{% endblock %}
+
+{% block content %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark bg-opacity-75">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">🎵 Eurovision 2026</span>
+        <div class="navbar-text text-light">
+            Voter: <strong>{{ username }}</strong>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card card-festive shadow-lg">
+                <div class="card-body p-5">
+                    <a href="/mgp/{{ username }}" class="btn btn-sm btn-secondary mb-4">← Back to Songs</a>
+                    
+                    <h3 class="mb-2 text-light">🎵 {{ song.song_name }}</h3>
+                    <p class="text-light mb-4">
+                        <strong>{{ song.country }}</strong> • {{ song.artist }}
+                    </p>
+                    
+                    {% if song.youtube_url %}
+                    <div class="mb-4">
+                        <div class="ratio ratio-16x9 mb-3">
+                            <iframe src="https://www.youtube.com/embed/{{ song.youtube_url.split('=')[1] if '=' in song.youtube_url else song.youtube_url }}" 
+                                    title="YouTube video player" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen>
+                            </iframe>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <form id="ratingForm" data-song-id="{{ song.id }}" data-username="{{ username }}">
+                        <div class="mb-4">
+                            <label for="stageShow" class="form-label text-light">🎭 Stage Show</label>
+                            <div class="rating-slider">
+                                <input type="range" class="form-range" id="stageShow" name="stage_show" min="1" max="12" value="{{ rating.stage_show or 6 }}">
+                                <span class="rating-value">{{ rating.stage_show or 6 }}</span>
+                            </div>
+                            <small class="text-muted">How impressive is the stage production?</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="musicalPerformance" class="form-label text-light">🎸 Musical Performance</label>
+                            <div class="rating-slider">
+                                <input type="range" class="form-range" id="musicalPerformance" name="musical_performance" min="1" max="12" value="{{ rating.musical_performance or 6 }}">
+                                <span class="rating-value">{{ rating.musical_performance or 6 }}</span>
+                            </div>
+                            <small class="text-muted">How good is the vocal and instrumental performance?</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="sexAppeal" class="form-label text-light">✨ Sex Appeal</label>
+                            <div class="rating-slider">
+                                <input type="range" class="form-range" id="sexAppeal" name="sex_appeal" min="1" max="12" value="{{ rating.sex_appeal or 6 }}">
+                                <span class="rating-value">{{ rating.sex_appeal or 6 }}</span>
+                            </div>
+                            <small class="text-muted">How attractive and charismatic is the performance?</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="wtfFactor" class="form-label text-light">🤪 WTF Factor</label>
+                            <div class="rating-slider">
+                                <input type="range" class="form-range" id="wtfFactor" name="wtf_factor" min="1" max="12" value="{{ rating.wtf_factor or 6 }}">
+                                <span class="rating-value">{{ rating.wtf_factor or 6 }}</span>
+                            </div>
+                            <small class="text-muted">How weird, unexpected or memorable is this performance?</small>
+                        </div>
+                        
+                        <div class="alert alert-info mb-4">
+                            <strong>Final Rating:</strong> <span id="finalRating">7.5</span>/12
+                            <br>
+                            <small>Weighted: Stage Show 30% • Musical Performance 40% • Sex Appeal 15% • WTF Factor 15%</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-lg btn-gradient w-100">💾 Save Rating</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const form = document.getElementById('ratingForm');
+const songId = form.dataset.songId;
+const username = form.dataset.username;
+
+// Update range values
+document.querySelectorAll('input[type="range"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+        const parent = e.target.parentElement;
+        parent.querySelector('.rating-value').textContent = e.target.value;
+        updateFinalRating();
+    });
+});
+
+function updateFinalRating() {
+    const stageShow = parseInt(document.getElementById('stageShow').value);
+    const musical = parseInt(document.getElementById('musicalPerformance').value);
+    const sex = parseInt(document.getElementById('sexAppeal').value);
+    const wtf = parseInt(document.getElementById('wtfFactor').value);
+    
+    const weighted = (stageShow * 0.30) + (musical * 0.40) + (sex * 0.15) + (wtf * 0.15);
+    document.getElementById('finalRating').textContent = weighted.toFixed(1);
+}
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const stageShow = parseInt(document.getElementById('stageShow').value);
+    const musical = parseInt(document.getElementById('musicalPerformance').value);
+    const sex = parseInt(document.getElementById('sexAppeal').value);
+    const wtf = parseInt(document.getElementById('wtfFactor').value);
+    
+    // Get user ID from backend
+    const usersResponse = await fetch('/api/users?username=' + encodeURIComponent(username), {
+        method: 'POST'
+    });
+    const userData = await usersResponse.json();
+    const userId = userData.id;
+    
+    try {
+        const response = await fetch(`/api/ratings?user_id=${userId}&song_id=${songId}&stage_show=${stageShow}&musical_performance=${musical}&sex_appeal=${sex}&wtf_factor=${wtf}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        window.location.href = '/mgp/' + encodeURIComponent(username);
+    } catch (error) {
+        alert('Error saving rating. Please try again.');
+    }
+});
+
+// Initialize final rating
+updateFinalRating();
+</script>
+{% endblock %}
