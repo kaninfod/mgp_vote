@@ -148,6 +148,33 @@ def save_rating(user_id: int, song_id: int, stage_show: int, musical_performance
     db.refresh(rating)
     return {"final_rating": rating.final_rating}
 
+@app.post("/api/reset-ratings")
+def reset_ratings(admin_key: str, db: Session = Depends(get_db)):
+    """Clear all ratings (keep users and songs)"""
+    if admin_key != "mgp2026":
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    db.query(models.Rating).delete()
+    db.commit()
+    return {"message": "All ratings cleared", "status": "success"}
+
+@app.post("/api/reset-all")
+def reset_all(admin_key: str, db: Session = Depends(get_db)):
+    """Clear everything and reseed songs"""
+    if admin_key != "mgp2026":
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    
+    # Delete all data
+    db.query(models.Rating).delete()
+    db.query(models.User).delete()
+    db.query(models.Song).delete()
+    db.commit()
+    
+    # Reseed songs
+    seed_songs(db)
+    
+    return {"message": "Database reset and songs reseeded", "status": "success"}
+
 @app.get("/mgp/{username}/results", response_class=HTMLResponse)
 def results_page(username: str, sort_by: str = "average", sort_dir: str = "desc", request: Request = None, db: Session = Depends(get_db)):
     """Results page showing all votes with optional sorting"""
